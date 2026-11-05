@@ -12,138 +12,150 @@ from src.enhancement import calculate_enhancement
 from src.settlement import calculate_final_settlement
 
 
+def save_results(results, output_file):
+    """
+    Saves command processing results in a clean,
+    readable format.
+    """
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_file, "w", encoding="utf-8") as file:
+
+        file.write("=" * 60 + "\n")
+        file.write("HEALTH INSURANCE CLAIM PROCESSING RESULTS\n")
+        file.write("=" * 60 + "\n\n")
+
+        for index, result in enumerate(results, start=1):
+
+            action = result.get("action", "UNKNOWN")
+            status = result.get("status", "UNKNOWN")
+
+            file.write("=" * 60 + "\n")
+            file.write(f"RESULT {index}: {action}\n")
+            file.write("=" * 60 + "\n")
+
+            file.write(f"Status: {status}\n")
+
+            # Basic details
+            if "policy_id" in result:
+                file.write(f"Policy ID: {result['policy_id']}\n")
+
+            if "member_id" in result:
+                file.write(f"Member ID: {result['member_id']}\n")
+
+            if "claim_id" in result:
+                file.write(f"Claim ID: {result['claim_id']}\n")
+
+            if "message" in result:
+                file.write(f"Message: {result['message']}\n")
+
+            # PRE_AUTH details
+            if "preauth_result" in result:
+
+                preauth = result["preauth_result"]
+
+                file.write("\nPRE-AUTH DETAILS\n")
+                file.write("-" * 40 + "\n")
+
+                file.write(
+                    f"Eligible Amount: ₹{preauth.get('eligible_amount', 0)}\n"
+                )
+
+                file.write(
+                    f"Approved Amount: ₹{preauth.get('approved_amount', 0)}\n"
+                )
+
+                file.write(
+                    f"Remaining SI: ₹{preauth.get('remaining_si', 0)}\n"
+                )
+
+                file.write(
+                    f"Rule ID: {preauth.get('rule_id', 'N/A')}\n"
+                )
+
+            # ENHANCEMENT details
+            if "enhancement_result" in result:
+
+                enhancement = result["enhancement_result"]
+
+                file.write("\nENHANCEMENT DETAILS\n")
+                file.write("-" * 40 + "\n")
+
+                file.write(
+                    f"Requested Amount: ₹{enhancement.get('requested_amount', 0)}\n"
+                )
+
+                file.write(
+                    f"Approved Amount: ₹{enhancement.get('approved_amount', 0)}\n"
+                )
+
+                file.write(
+                    f"Remaining SI: ₹{enhancement.get('remaining_si', 0)}\n"
+                )
+
+                file.write(
+                    f"Rule ID: {enhancement.get('rule_id', 'N/A')}\n"
+                )
+
+            # FINAL BILL details
+            if "settlement_result" in result:
+
+                settlement = result["settlement_result"]
+
+                file.write("\nFINAL SETTLEMENT DETAILS\n")
+                file.write("-" * 40 + "\n")
+
+                file.write(
+                    f"Final Bill: ₹{settlement.get('final_bill', 0)}\n"
+                )
+
+                file.write(
+                    f"Insurance Payable: ₹{settlement.get('insurance_payable', 0)}\n"
+                )
+
+                file.write(
+                    f"Customer Share: ₹{settlement.get('customer_share', 0)}\n"
+                )
+
+                file.write(
+                    f"Rule ID: {settlement.get('rule_id', 'N/A')}\n"
+                )
+
+            file.write("\n\n")
+
+
 def main():
 
     # =============================================
-    # TEMPORARY TEST MEMBER
+    # PROJECT PATHS
     # =============================================
 
-    member = Member(
-        member_id="M001",
-        name="Test Member",
-        date_of_birth=date(1960, 1, 1)
+    project_folder = Path(__file__).resolve().parent.parent
+
+    command_file = (
+        project_folder / "data" / "input" / "commands.txt"
     )
 
-    # =============================================
-    # TEMPORARY TEST POLICY
-    # =============================================
-
-    policy = Policy(
-        policy_id="P001",
-        sum_insured=500000,
-        plan="SILVER",
-        inception_date=date(2026, 1, 1),
-        zone="A",
-        members=[member]
+    output_file = (
+        project_folder / "data" / "output" / "results.txt"
     )
-
-    # =============================================
-    # TEMPORARY TEST CLAIM
-    # =============================================
-
-    claim = Claim(
-        claim_id="C001",
-        policy_id="P001",
-        member_id="M001",
-        diagnosis_code="HERNIA",
-        icd_chapter="K",
-        estimated_bill=150000,
-        admission_date=date(2026, 3, 15)
-    )
-
-    # =============================================
-    # PROCESS CLAIM
-    # =============================================
-
-    decision = process_claim(
-        policy=policy,
-        member=member,
-        claim=claim,
-        actual_room_rent=8000,
-        hospital_zone="C",
-        non_payable_amount=5000,
-        consumable_cover=False,
-        accident_codes=[],
-        specified_illnesses=[]
-    )
-
-    # =============================================
-    # DISPLAY CLAIM DECISION
-    # =============================================
-
-    print("\n===== CLAIM DECISION =====")
-
-    for key, value in decision.items():
-        print(f"{key}: {value}")
-
-    # =============================================
-    # PRE-AUTH INITIAL APPROVAL
-    # =============================================
-
-    preauth_result = calculate_initial_approval(
-        eligible_amount=decision["insurance_payable"],
-        remaining_si=policy.sum_insured
-    )
-
-    print("\n===== PRE-AUTH INITIAL APPROVAL =====")
-
-    for key, value in preauth_result.items():
-        print(f"{key}: {value}")
-
-    # =============================================
-    # ENHANCEMENT TEST
-    # =============================================
-
-    enhancement_result = calculate_enhancement(
-        requested_amount=50000,
-        remaining_si=policy.sum_insured - preauth_result["approved_amount"],
-        request_datetime=datetime(2026, 3, 16, 10, 30),
-        discharge_date=date(2026, 3, 20)
-    )
-
-    print("\n===== ENHANCEMENT RESULT =====")
-
-    for key, value in enhancement_result.items():
-        print(f"{key}: {value}")
-
-    # =============================================
-    # FINAL BILL SETTLEMENT TEST
-    # =============================================
-
-    final_settlement = calculate_final_settlement(
-        final_bill=140000,
-        eligible_amount=decision["insurance_payable"],
-        remaining_si=policy.sum_insured,
-        initial_approved_amount=preauth_result["approved_amount"],
-        enhancement_approved_amount=enhancement_result["approved_amount"]
-    )
-
-    print("\n===== FINAL BILL SETTLEMENT =====")
-
-    for key, value in final_settlement.items():
-        print(f"{key}: {value}")
 
     # =============================================
     # READ COMMAND FILE
     # =============================================
 
-    project_folder = Path(__file__).resolve().parent.parent
-    command_file = project_folder / "data" / "input" / "commands.txt"
+    print("\n===== COMMANDS =====")
 
-    print(f"\nLooking for command file at:\n{command_file}")
-
-    # Read commands
     commands = read_commands(command_file)
 
-    # Display original commands
     display_commands(commands)
 
-    # Parse commands
-    parsed_commands = parse_all_commands(commands)
+    # =============================================
+    # PARSE COMMANDS
+    # =============================================
 
-    # =============================================
-    # DISPLAY PARSED COMMANDS
-    # =============================================
+    parsed_commands = parse_all_commands(commands)
 
     print("\n===== PARSED COMMANDS =====")
 
@@ -151,20 +163,37 @@ def main():
         print(command)
 
     # =============================================
-    # CREATE DATA STORE AND HANDLE COMMANDS
+    # CREATE DATA STORE
     # =============================================
 
     store = DataStore()
+
+    # =============================================
+    # PROCESS ALL COMMANDS
+    # =============================================
 
     command_results = handle_all_commands(
         parsed_commands,
         store
     )
 
+    # =============================================
+    # DISPLAY RESULTS
+    # =============================================
+
     print("\n===== COMMAND RESULTS =====")
 
     for result in command_results:
         print(result)
+
+    # =============================================
+    # SAVE RESULTS TO FILE
+    # =============================================
+
+    save_results(command_results, output_file)
+
+    print("\nResults saved successfully!")
+    print(f"Output file: {output_file}")
 
 
 if __name__ == "__main__":

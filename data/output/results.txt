@@ -1,0 +1,56 @@
+============================================================
+HEALTH INSURANCE CLAIM PROCESSING RESULTS
+============================================================
+
+============================================================
+RESULT 1: REGISTER_POLICY
+============================================================
+Status: SUCCESS
+Policy ID: P001
+Message: Policy P001 registered successfully.
+
+
+============================================================
+RESULT 2: PRE_AUTH
+============================================================
+Status: SUCCESS
+Policy ID: P001
+Member ID: M001
+Claim ID: C001
+
+PRE-AUTH DETAILS
+----------------------------------------
+Eligible Amount: ₹60000.0
+Approved Amount: ₹60000.0
+Remaining SI: ₹500000.0
+Rule ID: BR-06
+
+
+============================================================
+RESULT 3: ENHANCEMENT
+============================================================
+Status: APPROVED
+Claim ID: C001
+
+ENHANCEMENT DETAILS
+----------------------------------------
+Requested Amount: ₹50000.0
+Approved Amount: ₹50000.0
+Remaining SI: ₹440000.0
+Rule ID: BR-06
+
+
+============================================================
+RESULT 4: FINAL_BILL
+============================================================
+Status: SETTLED
+Claim ID: C001
+
+FINAL SETTLEMENT DETAILS
+----------------------------------------
+Final Bill: ₹140000.0
+Insurance Payable: ₹140000.0
+Customer Share: ₹0.0
+Rule ID: BR-07
+
+
