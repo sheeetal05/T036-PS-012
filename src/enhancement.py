@@ -1,4 +1,5 @@
-from datetime import datetime, date
+from datetime import datetime
+from src.validators import validate_positive_amount, validate_remaining_si
 
 
 def calculate_enhancement(
@@ -9,22 +10,22 @@ def calculate_enhancement(
 ):
     """
     Calculate whether an enhancement request is allowed.
-
-    BR-06:
-    - Enhancement can be approved up to the remaining Sum Insured.
-    - Enhancement request must arrive before the discharge date.
     """
 
-    # Convert datetime to date if needed
+    validate_positive_amount(requested_amount, "Requested amount")
+    validate_remaining_si(remaining_si)
+
+    # Convert datetime to date
     if isinstance(request_datetime, datetime):
         request_date = request_datetime.date()
     else:
         request_date = request_datetime
 
-    # Check if enhancement arrived after discharge
+    # Request after discharge is rejected
     if request_date > discharge_date:
         return {
             "status": "REJECTED",
+            "requested_amount": requested_amount,
             "approved_amount": 0,
             "reason": "Enhancement request received after discharge date",
             "rule_id": "BR-06"

@@ -1,13 +1,13 @@
+from src.validators import validate_positive_amount, validate_remaining_si
+
+
 def calculate_initial_approval(eligible_amount, remaining_si):
     """
     Calculate the initial PRE_AUTH approval amount.
-
-    BR-06:
-    Initial approval is the minimum of:
-    - Eligible estimated bill
-    - 60% of remaining Sum Insured
-    - Rs. 2,00,000
     """
+
+    validate_positive_amount(eligible_amount, "Eligible amount")
+    validate_remaining_si(remaining_si)
 
     sixty_percent_si = remaining_si * 0.60
     maximum_initial_approval = 200000

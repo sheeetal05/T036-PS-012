@@ -1,3 +1,6 @@
+from src.validators import validate_positive_amount, validate_remaining_si
+
+
 def calculate_final_settlement(
     final_bill,
     eligible_amount,
@@ -7,26 +10,30 @@ def calculate_final_settlement(
 ):
     """
     Calculate FINAL_BILL settlement.
-
-    BR-07:
-    - Insurance payable is capped at remaining Sum Insured.
-    - Customer pays the remaining balance.
-    - If final payable is lower than the amount initially approved,
-      the unused approved amount is released.
     """
 
-    # Amount approved during pre-auth and enhancement
+    validate_positive_amount(final_bill, "Final bill")
+    validate_positive_amount(eligible_amount, "Eligible amount")
+    validate_remaining_si(remaining_si)
+
+    if initial_approved_amount < 0:
+        raise ValueError(
+            "Initial approved amount cannot be negative."
+        )
+
+    if enhancement_approved_amount < 0:
+        raise ValueError(
+            "Enhancement approved amount cannot be negative."
+        )
+
     total_authorized_amount = (
         initial_approved_amount + enhancement_approved_amount
     )
 
-    # Insurance can pay only up to the eligible amount or remaining SI
     insurance_payable = min(eligible_amount, remaining_si)
 
-    # Customer pays the balance of the final bill
     customer_share = max(final_bill - insurance_payable, 0)
 
-    # Release unused authorised amount
     released_amount = max(
         total_authorized_amount - insurance_payable,
         0

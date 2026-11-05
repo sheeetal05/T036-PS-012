@@ -3,6 +3,7 @@ from datetime import date, datetime
 from src.preauth import calculate_initial_approval
 from src.enhancement import calculate_enhancement
 from src.settlement import calculate_final_settlement
+import pytest
 
 
 # =============================================
@@ -119,3 +120,44 @@ def test_final_settlement_releases_unused_amount():
     )
 
     assert result["released_amount"] == 100000
+    import pytest
+
+
+# =============================================
+# INPUT VALIDATION AND EDGE CASE TESTS
+# =============================================
+
+def test_preauth_rejects_negative_eligible_amount():
+    with pytest.raises(ValueError):
+        calculate_initial_approval(
+            eligible_amount=-1000,
+            remaining_si=500000
+        )
+
+
+def test_preauth_rejects_negative_remaining_si():
+    with pytest.raises(ValueError):
+        calculate_initial_approval(
+            eligible_amount=50000,
+            remaining_si=-100
+        )
+
+
+def test_enhancement_rejects_zero_amount():
+    with pytest.raises(ValueError):
+        calculate_enhancement(
+            requested_amount=0,
+            remaining_si=100000,
+            request_datetime=datetime(2026, 3, 16, 10, 0),
+            discharge_date=date(2026, 3, 20)
+        )
+
+
+def test_settlement_rejects_negative_final_bill():
+    with pytest.raises(ValueError):
+        calculate_final_settlement(
+            final_bill=-50000,
+            eligible_amount=50000,
+            remaining_si=200000,
+            initial_approved_amount=50000
+        )

@@ -6,6 +6,7 @@ from src.engine import process_claim
 from src.command_processor import read_commands, display_commands
 from src.command_parser import parse_all_commands
 from src.command_handler import handle_all_commands
+from src.store import DataStore
 from src.preauth import calculate_initial_approval
 from src.enhancement import calculate_enhancement
 from src.settlement import calculate_final_settlement
@@ -123,11 +124,10 @@ def main():
         print(f"{key}: {value}")
 
     # =============================================
-    # READ AND PARSE COMMAND FILE
+    # READ COMMAND FILE
     # =============================================
 
     project_folder = Path(__file__).resolve().parent.parent
-
     command_file = project_folder / "data" / "input" / "commands.txt"
 
     print(f"\nLooking for command file at:\n{command_file}")
@@ -151,10 +151,15 @@ def main():
         print(command)
 
     # =============================================
-    # HANDLE COMMANDS
+    # CREATE DATA STORE AND HANDLE COMMANDS
     # =============================================
 
-    command_results = handle_all_commands(parsed_commands)
+    store = DataStore()
+
+    command_results = handle_all_commands(
+        parsed_commands,
+        store
+    )
 
     print("\n===== COMMAND RESULTS =====")
 
