@@ -1,5 +1,5 @@
-from models import Policy, Member, Claim
-from rules import (
+from src.models import Policy, Member, Claim
+from src.rules import (
     check_waiting_period,
     calculate_proportionate_factor,
     apply_proportionate_deduction,
@@ -21,16 +21,10 @@ def process_claim(
     accident_codes=None,
     specified_illnesses=None
 ):
-    """
-    Process a claim using the required business-rule precedence.
-    """
 
     rule_ids = []
 
-    # =====================================================
-    # STEP 1: WAITING PERIOD
-    # =====================================================
-
+    # BR-01: WAITING PERIOD
     eligible, message = check_waiting_period(
         policy,
         member,
@@ -50,13 +44,10 @@ def process_claim(
 
     rule_ids.append("BR-01")
 
-    # Start with the estimated bill
+    # Start with estimated bill
     amount = claim.estimated_bill
 
-    # =====================================================
-    # STEP 2: ROOM PROPORTIONATE DEDUCTION
-    # =====================================================
-
+    # BR-02: ROOM RENT
     factor, room_limit = calculate_proportionate_factor(
         policy,
         actual_room_rent
@@ -68,25 +59,23 @@ def process_claim(
     )
 
     room_deduction = amount - amount_after_room
+
     rule_ids.append("BR-02")
 
-    # =====================================================
-    # STEP 3: DISEASE SUB-LIMIT
-    # =====================================================
-
+    # BR-03: DISEASE SUB-LIMIT
     amount_after_sub_limit, sub_limit = apply_disease_sub_limit(
         policy,
         claim.diagnosis_code,
         amount_after_room
     )
 
-    sub_limit_deduction = amount_after_room - amount_after_sub_limit
+    sub_limit_deduction = (
+        amount_after_room - amount_after_sub_limit
+    )
+
     rule_ids.append("BR-03")
 
-    # =====================================================
-    # STEP 4: NON-PAYABLES
-    # =====================================================
-
+    # BR-05: NON-PAYABLES
     non_payable_deduction = calculate_non_payable_deduction(
         policy,
         amount_after_sub_limit,
@@ -101,10 +90,7 @@ def process_claim(
 
     rule_ids.append("BR-05")
 
-    # =====================================================
-    # STEP 5: CO-PAY
-    # =====================================================
-
+    # BR-04: CO-PAY
     copay_percentage = calculate_copay_percentage(
         policy,
         member,
@@ -112,29 +98,28 @@ def process_claim(
         hospital_zone
     )
 
-    customer_copay, insurance_payable_before_si = apply_copay(
+    customer_copay, insurance_before_si = apply_copay(
         amount_after_non_payables,
         copay_percentage
     )
 
     rule_ids.append("BR-04")
 
-    # =====================================================
-    # STEP 6: SUM INSURED CAP
-    # =====================================================
+    # BR-07: SUM INSURED CAP
+    available_si = policy.remaining_si
 
     insurance_payable = min(
-        insurance_payable_before_si,
-        policy.calculate_available_si()
+        insurance_before_si,
+        available_si
     )
 
     si_deduction = (
-        insurance_payable_before_si - insurance_payable
+        insurance_before_si - insurance_payable
     )
 
     rule_ids.append("BR-07")
 
-    # Determine claim status
+    # CLAIM STATUS
     if insurance_payable <= 0:
         status = "REJECTED"
     elif insurance_payable < claim.estimated_bill:
@@ -144,7 +129,6 @@ def process_claim(
 
     claim.update_status(status)
 
-    # Return the complete claim decision
     return {
         "status": status,
         "original_bill": claim.estimated_bill,
