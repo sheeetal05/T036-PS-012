@@ -2,33 +2,41 @@
 
 ## Project Overview
 
-This project is a Python-based rules engine that simulates the health insurance cashless claim process.
+This project is a rule-based Health Insurance Cashless Pre-Authorisation and Settlement Engine. It processes insurance claims through a command-based workflow and applies business rules to determine eligibility, approvals, enhancements, and final settlements.
 
-The system processes a claim through the following stages:
+The system simulates a simplified cashless health insurance claim process from policy registration to final bill settlement.
 
-1. Claim eligibility and business rule evaluation
-2. PRE_AUTH initial approval
-3. ENHANCEMENT request processing
-4. FINAL_BILL settlement
+## Features
 
-The project is designed to apply business rules consistently and calculate the insurance payable amount and customer share.
-
-## Features Implemented
-
-- Policy, Member and Claim models
-- Business rule evaluation
-- Claim decision engine
+- Policy registration
+- Member and claim management
+- Rule-based claim eligibility checking
+- Initial waiting period validation
 - Room rent limit calculation
-- Sub-limit calculation
-- Non-payable deduction handling
+- Disease sub-limit calculation
+- Non-payable expense handling
 - Co-payment calculation
-- Sum Insured limit handling
-- PRE_AUTH approval calculation
-- ENHANCEMENT request validation
-- FINAL_BILL settlement calculation
-- Command file reading and parsing
-- Basic command handling
-- Automated tests using pytest
+- Sum insured validation
+- Pre-authorisation approval
+- Enhancement approval
+- Final bill settlement
+- Command-based input processing
+- Clean text-based output generation
+- Automated unit testing
+
+## Project Workflow
+
+```text
+REGISTER_POLICY
+       ↓
+PRE_AUTH
+       ↓
+ENHANCEMENT
+       ↓
+FINAL_BILL
+       ↓
+SETTLED
+```
 
 ## Project Structure
 
@@ -40,6 +48,7 @@ capstone/
 │   │   └── commands.txt
 │   │
 │   └── output/
+│       └── results.txt
 │
 ├── docs/
 │   ├── business_rules.md
@@ -55,82 +64,156 @@ capstone/
 │   ├── preauth.py
 │   ├── enhancement.py
 │   ├── settlement.py
+│   ├── store.py
 │   ├── command_processor.py
 │   ├── command_parser.py
 │   ├── command_handler.py
 │   └── main.py
 │
 ├── test/
-│   ├── test_rules.py
-│   └── test_workflow.py
+│   └── test_rules.py
 │
 ├── requirements.txt
-├── .gitignore
 └── README.md
 ```
 
-## Workflow
+## Requirements
 
-```text
-CLAIM
-  ↓
-BUSINESS RULE EVALUATION
-  ↓
-CLAIM DECISION
-  ↓
-PRE_AUTH
-  ↓
-ENHANCEMENT
-  ↓
-FINAL_BILL
-  ↓
-SETTLEMENT
+- Python 3.11 or later
+- pytest
+
+Install the required package:
+
+```bash
+pip install pytest
 ```
 
 ## How to Run the Project
 
-Open a terminal in the main project folder and run:
+Open a terminal inside the project folder and run:
 
 ```bash
 python -m src.main
 ```
 
-The program currently uses temporary test data to demonstrate the complete claim workflow.
+The program reads commands from:
 
-## How to Run Tests
-
-Install pytest if required:
-
-```bash
-python -m pip install pytest
+```text
+data/input/commands.txt
 ```
 
-Run the tests using:
+The results are saved to:
+
+```text
+data/output/results.txt
+```
+
+## Example Commands
+
+The `commands.txt` file can contain commands such as:
+
+```text
+REGISTER_POLICY P001 SILVER 500000
+PRE_AUTH P001 M001 HERNIA 150000
+ENHANCEMENT C001 50000
+FINAL_BILL C001 140000
+```
+
+## Example Workflow
+
+### 1. Register Policy
+
+```text
+REGISTER_POLICY P001 SILVER 500000
+```
+
+Creates a health insurance policy with a sum insured of ₹500,000.
+
+### 2. Pre-Authorisation
+
+```text
+PRE_AUTH P001 M001 HERNIA 150000
+```
+
+Creates a claim and checks it against the configured business rules.
+
+### 3. Enhancement
+
+```text
+ENHANCEMENT C001 50000
+```
+
+Requests an additional amount for an existing claim.
+
+### 4. Final Bill Settlement
+
+```text
+FINAL_BILL C001 140000
+```
+
+Processes the final bill and calculates the settlement result.
+
+## Testing
+
+Run the automated tests using:
 
 ```bash
 python -m pytest
 ```
 
-## Current Status
+## Business Rules
 
-The core claim processing workflow has been implemented and tested.
+The engine applies several business rules during claim processing, including:
 
-The project currently uses temporary test data while waiting for the official sample data and input files. The command processing structure is ready to be connected to the official data format in the next phase.
+- Initial waiting period
+- Room rent limits
+- Disease-specific sub-limits
+- Non-payable expenses
+- Co-payment
+- Sum insured limits
+- Pre-authorisation approval limits
+- Final settlement rules
 
-## Technologies Used
+Detailed business rules are available in:
 
-- Python 3
-- pytest
-- Git and GitHub
+```text
+docs/business_rules.md
+```
+
+## Output
+
+After processing the commands, the system generates a readable result file containing the status and details of each stage of the claim workflow.
+
+Example:
+
+```text
+RESULT 1: REGISTER_POLICY
+Status: SUCCESS
+
+RESULT 2: PRE_AUTH
+Status: SUCCESS
+Approved Amount: ₹60000
+
+RESULT 3: ENHANCEMENT
+Status: APPROVED
+Approved Amount: ₹50000
+
+RESULT 4: FINAL_BILL
+Status: SETTLED
+```
 
 ## Future Improvements
 
-- Connect official sample data
-- Implement persistent data storage
-- Process commands as actual business operations
-- Generate structured output files
-- Add additional edge-case tests
+- Persistent database storage
+- Support for multiple policies and members
+- More detailed hospital and diagnosis data
+- Improved settlement reconciliation
+- REST API or web interface
+- Enhanced reporting and audit logs
 
----
+## Author
 
-**Capstone Project – Health Insurance Cashless Pre-Authorisation and Settlement Engine**
+Sheetal K M
+
+B.E. Computer Science & Engineering (Data Science)  
+Atria Institute of Technology
