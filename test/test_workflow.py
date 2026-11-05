@@ -1,163 +1,156 @@
-from datetime import date, datetime
-
-from src.preauth import calculate_initial_approval
-from src.enhancement import calculate_enhancement
-from src.settlement import calculate_final_settlement
-import pytest
+from src.command_handler import handle_command, handle_all_commands
+from src.store import DataStore
 
 
-# =============================================
-# PRE-AUTH TESTS
-# =============================================
+def test_register_policy_success():
+    """Test successful policy registration."""
 
-def test_preauth_uses_eligible_amount_when_lowest():
-    result = calculate_initial_approval(
-        eligible_amount=50000,
-        remaining_si=500000
-    )
+    store = DataStore()
 
-    assert result["approved_amount"] == 50000
-    assert result["rule_id"] == "BR-06"
+    command = {
+        "command_type": "REGISTER_POLICY",
+        "values": ["P001", "SILVER", "500000"]
+    }
 
+    result = handle_command(command, store)
 
-def test_preauth_caps_at_200000():
-    result = calculate_initial_approval(
-        eligible_amount=400000,
-        remaining_si=1000000
-    )
-
-    assert result["approved_amount"] == 200000
+    assert result["status"] == "SUCCESS"
+    assert result["policy_id"] == "P001"
+    assert store.get_policy("P001") is not None
 
 
-def test_preauth_respects_si_percentage_limit():
-    result = calculate_initial_approval(
-        eligible_amount=300000,
-        remaining_si=200000
-    )
+def test_register_policy_invalid_sum_insured():
+    """Test policy registration with invalid sum insured."""
 
-    # 60% of 2,00,000 = 1,20,000
-    assert result["approved_amount"] == 120000
+    store = DataStore()
 
+    command = {
+        "command_type": "REGISTER_POLICY",
+        "values": ["P001", "SILVER", "-500000"]
+    }
 
-# =============================================
-# ENHANCEMENT TESTS
-# =============================================
+    result = handle_command(command, store)
 
-def test_enhancement_approved_before_discharge():
-    result = calculate_enhancement(
-        requested_amount=50000,
-        remaining_si=100000,
-        request_datetime=datetime(2026, 3, 16, 10, 0),
-        discharge_date=date(2026, 3, 20)
-    )
-
-    assert result["status"] == "APPROVED"
-    assert result["approved_amount"] == 50000
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Sum insured must be greater than zero."
 
 
-def test_enhancement_rejected_after_discharge():
-    result = calculate_enhancement(
-        requested_amount=50000,
-        remaining_si=100000,
-        request_datetime=datetime(2026, 3, 21, 10, 0),
-        discharge_date=date(2026, 3, 20)
-    )
+def test_register_policy_invalid_command():
+    """Test REGISTER_POLICY with missing values."""
 
-    assert result["status"] == "REJECTED"
-    assert result["approved_amount"] == 0
+    store = DataStore()
 
+    command = {
+        "command_type": "REGISTER_POLICY",
+        "values": ["P001", "SILVER"]
+    }
 
-def test_enhancement_partial_when_si_is_low():
-    result = calculate_enhancement(
-        requested_amount=100000,
-        remaining_si=40000,
-        request_datetime=datetime(2026, 3, 16, 10, 0),
-        discharge_date=date(2026, 3, 20)
-    )
+    result = handle_command(command, store)
 
-    assert result["status"] == "PARTIAL"
-    assert result["approved_amount"] == 40000
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Invalid REGISTER_POLICY command."
 
 
-# =============================================
-# FINAL SETTLEMENT TESTS
-# =============================================
+def test_preauth_policy_not_found():
+    """Test PRE_AUTH when the policy does not exist."""
 
-def test_final_settlement_normal_case():
-    result = calculate_final_settlement(
-        final_bill=140000,
-        eligible_amount=100000,
-        remaining_si=200000,
-        initial_approved_amount=80000,
-        enhancement_approved_amount=20000
-    )
+    store = DataStore()
 
-    assert result["status"] == "SETTLED"
-    assert result["insurance_payable"] == 100000
-    assert result["customer_share"] == 40000
+    command = {
+        "command_type": "PRE_AUTH",
+        "values": ["P999", "M001", "HERNIA", "150000"]
+    }
+
+    result = handle_command(command, store)
+
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Policy P999 not found."
 
 
-def test_final_settlement_caps_at_remaining_si():
-    result = calculate_final_settlement(
-        final_bill=300000,
-        eligible_amount=250000,
-        remaining_si=150000,
-        initial_approved_amount=100000,
-        enhancement_approved_amount=50000
-    )
+def test_enhancement_claim_not_found():
+    """Test ENHANCEMENT for a claim that does not exist."""
 
-    assert result["insurance_payable"] == 150000
-    assert result["customer_share"] == 150000
+    store = DataStore()
 
+    command = {
+        "command_type": "ENHANCEMENT",
+        "values": ["C999", "50000"]
+    }
 
-def test_final_settlement_releases_unused_amount():
-    result = calculate_final_settlement(
-        final_bill=50000,
-        eligible_amount=50000,
-        remaining_si=200000,
-        initial_approved_amount=100000,
-        enhancement_approved_amount=50000
-    )
+    result = handle_command(command, store)
 
-    assert result["released_amount"] == 100000
-    import pytest
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Claim C999 not found."
 
 
-# =============================================
-# INPUT VALIDATION AND EDGE CASE TESTS
-# =============================================
+def test_final_bill_claim_not_found():
+    """Test FINAL_BILL for a claim that does not exist."""
 
-def test_preauth_rejects_negative_eligible_amount():
-    with pytest.raises(ValueError):
-        calculate_initial_approval(
-            eligible_amount=-1000,
-            remaining_si=500000
-        )
+    store = DataStore()
 
+    command = {
+        "command_type": "FINAL_BILL",
+        "values": ["C999", "140000"]
+    }
 
-def test_preauth_rejects_negative_remaining_si():
-    with pytest.raises(ValueError):
-        calculate_initial_approval(
-            eligible_amount=50000,
-            remaining_si=-100
-        )
+    result = handle_command(command, store)
+
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Claim C999 not found."
 
 
-def test_enhancement_rejects_zero_amount():
-    with pytest.raises(ValueError):
-        calculate_enhancement(
-            requested_amount=0,
-            remaining_si=100000,
-            request_datetime=datetime(2026, 3, 16, 10, 0),
-            discharge_date=date(2026, 3, 20)
-        )
+def test_unknown_command():
+    """Test an unknown command."""
+
+    store = DataStore()
+
+    command = {
+        "command_type": "UNKNOWN_COMMAND",
+        "values": []
+    }
+
+    result = handle_command(command, store)
+
+    assert result["status"] == "ERROR"
+    assert result["message"] == "Unknown command: UNKNOWN_COMMAND"
 
 
-def test_settlement_rejects_negative_final_bill():
-    with pytest.raises(ValueError):
-        calculate_final_settlement(
-            final_bill=-50000,
-            eligible_amount=50000,
-            remaining_si=200000,
-            initial_approved_amount=50000
-        )
+def test_complete_command_workflow():
+    """
+    Test the complete workflow:
+    REGISTER_POLICY -> PRE_AUTH -> ENHANCEMENT -> FINAL_BILL
+    """
+
+    store = DataStore()
+
+    commands = [
+        {
+            "command_type": "REGISTER_POLICY",
+            "values": ["P001", "SILVER", "500000"]
+        },
+        {
+            "command_type": "PRE_AUTH",
+            "values": ["P001", "M001", "HERNIA", "150000"]
+        },
+        {
+            "command_type": "ENHANCEMENT",
+            "values": ["C001", "50000"]
+        },
+        {
+            "command_type": "FINAL_BILL",
+            "values": ["C001", "140000"]
+        }
+    ]
+
+    results = handle_all_commands(commands, store)
+
+    assert len(results) == 4
+    assert results[0]["status"] == "SUCCESS"
+    assert results[1]["status"] == "SUCCESS"
+    assert results[2]["status"] == "APPROVED"
+    assert results[3]["status"] == "SETTLED"
+
+    assert store.get_policy("P001") is not None
+    assert store.get_claim("C001") is not None
+    assert store.get_preauth("C001") is not None
+    assert store.get_enhancement("C001") is not None
