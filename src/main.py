@@ -1,10 +1,14 @@
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from src.models import Member, Policy, Claim
 from src.engine import process_claim
 from src.command_processor import read_commands, display_commands
 from src.command_parser import parse_all_commands
+from src.command_handler import handle_all_commands
+from src.preauth import calculate_initial_approval
+from src.enhancement import calculate_enhancement
+from src.settlement import calculate_final_settlement
 
 
 def main():
@@ -72,26 +76,90 @@ def main():
         print(f"{key}: {value}")
 
     # =============================================
+    # PRE-AUTH INITIAL APPROVAL
+    # =============================================
+
+    preauth_result = calculate_initial_approval(
+        eligible_amount=decision["insurance_payable"],
+        remaining_si=policy.sum_insured
+    )
+
+    print("\n===== PRE-AUTH INITIAL APPROVAL =====")
+
+    for key, value in preauth_result.items():
+        print(f"{key}: {value}")
+
+    # =============================================
+    # ENHANCEMENT TEST
+    # =============================================
+
+    enhancement_result = calculate_enhancement(
+        requested_amount=50000,
+        remaining_si=policy.sum_insured - preauth_result["approved_amount"],
+        request_datetime=datetime(2026, 3, 16, 10, 30),
+        discharge_date=date(2026, 3, 20)
+    )
+
+    print("\n===== ENHANCEMENT RESULT =====")
+
+    for key, value in enhancement_result.items():
+        print(f"{key}: {value}")
+
+    # =============================================
+    # FINAL BILL SETTLEMENT TEST
+    # =============================================
+
+    final_settlement = calculate_final_settlement(
+        final_bill=140000,
+        eligible_amount=decision["insurance_payable"],
+        remaining_si=policy.sum_insured,
+        initial_approved_amount=preauth_result["approved_amount"],
+        enhancement_approved_amount=enhancement_result["approved_amount"]
+    )
+
+    print("\n===== FINAL BILL SETTLEMENT =====")
+
+    for key, value in final_settlement.items():
+        print(f"{key}: {value}")
+
+    # =============================================
     # READ AND PARSE COMMAND FILE
     # =============================================
 
     project_folder = Path(__file__).resolve().parent.parent
 
-    # Updated to use input folder
     command_file = project_folder / "data" / "input" / "commands.txt"
 
     print(f"\nLooking for command file at:\n{command_file}")
 
+    # Read commands
     commands = read_commands(command_file)
 
+    # Display original commands
     display_commands(commands)
 
+    # Parse commands
     parsed_commands = parse_all_commands(commands)
+
+    # =============================================
+    # DISPLAY PARSED COMMANDS
+    # =============================================
 
     print("\n===== PARSED COMMANDS =====")
 
     for command in parsed_commands:
         print(command)
+
+    # =============================================
+    # HANDLE COMMANDS
+    # =============================================
+
+    command_results = handle_all_commands(parsed_commands)
+
+    print("\n===== COMMAND RESULTS =====")
+
+    for result in command_results:
+        print(result)
 
 
 if __name__ == "__main__":
