@@ -1,15 +1,9 @@
-from datetime import date, datetime
 from pathlib import Path
 
-from src.models import Member, Policy, Claim
-from src.engine import process_claim
 from src.command_processor import read_commands, display_commands
 from src.command_parser import parse_all_commands
 from src.command_handler import handle_all_commands
 from src.store import DataStore
-from src.preauth import calculate_initial_approval
-from src.enhancement import calculate_enhancement
-from src.settlement import calculate_final_settlement
 
 
 def save_results(results, output_file):
@@ -37,7 +31,6 @@ def save_results(results, output_file):
 
             file.write(f"Status: {status}\n")
 
-            # Basic details
             if "policy_id" in result:
                 file.write(f"Policy ID: {result['policy_id']}\n")
 
@@ -50,79 +43,90 @@ def save_results(results, output_file):
             if "message" in result:
                 file.write(f"Message: {result['message']}\n")
 
-            # PRE_AUTH details
             if "preauth_result" in result:
-
                 preauth = result["preauth_result"]
 
                 file.write("\nPRE-AUTH DETAILS\n")
                 file.write("-" * 40 + "\n")
-
                 file.write(
                     f"Eligible Amount: ₹{preauth.get('eligible_amount', 0)}\n"
                 )
-
                 file.write(
                     f"Approved Amount: ₹{preauth.get('approved_amount', 0)}\n"
                 )
-
                 file.write(
                     f"Remaining SI: ₹{preauth.get('remaining_si', 0)}\n"
                 )
-
                 file.write(
                     f"Rule ID: {preauth.get('rule_id', 'N/A')}\n"
                 )
 
-            # ENHANCEMENT details
             if "enhancement_result" in result:
-
                 enhancement = result["enhancement_result"]
 
                 file.write("\nENHANCEMENT DETAILS\n")
                 file.write("-" * 40 + "\n")
-
                 file.write(
                     f"Requested Amount: ₹{enhancement.get('requested_amount', 0)}\n"
                 )
-
                 file.write(
                     f"Approved Amount: ₹{enhancement.get('approved_amount', 0)}\n"
                 )
-
                 file.write(
                     f"Remaining SI: ₹{enhancement.get('remaining_si', 0)}\n"
                 )
-
                 file.write(
                     f"Rule ID: {enhancement.get('rule_id', 'N/A')}\n"
                 )
 
-            # FINAL BILL details
             if "settlement_result" in result:
-
                 settlement = result["settlement_result"]
 
                 file.write("\nFINAL SETTLEMENT DETAILS\n")
                 file.write("-" * 40 + "\n")
-
                 file.write(
                     f"Final Bill: ₹{settlement.get('final_bill', 0)}\n"
                 )
-
                 file.write(
                     f"Insurance Payable: ₹{settlement.get('insurance_payable', 0)}\n"
                 )
-
                 file.write(
                     f"Customer Share: ₹{settlement.get('customer_share', 0)}\n"
                 )
-
                 file.write(
                     f"Rule ID: {settlement.get('rule_id', 'N/A')}\n"
                 )
 
-            file.write("\n\n")
+            file.write("\n")
+
+
+def display_summary(results):
+    """
+    Displays a clean summary of command processing results.
+    """
+
+    print("\n" + "=" * 60)
+    print("HEALTH INSURANCE CLAIM PROCESSING ENGINE")
+    print("=" * 60)
+
+    print("\nPROCESSING SUMMARY\n")
+
+    for result in results:
+        action = result.get("action", "UNKNOWN")
+        status = result.get("status", "UNKNOWN")
+
+        if status in ["SUCCESS", "APPROVED", "SETTLED"]:
+            symbol = "✓"
+        else:
+            symbol = "✗"
+
+        print(f"{symbol} {action:<20} — {status}")
+
+        # Show error message clearly if a command fails
+        if status == "ERROR":
+            print(f"  Message: {result.get('message', 'Unknown error')}")
+
+    print("\n" + "=" * 60)
 
 
 def main():
@@ -142,35 +146,23 @@ def main():
     )
 
     # =============================================
-    # READ COMMAND FILE
+    # READ AND PARSE COMMANDS
     # =============================================
-
-    print("\n===== COMMANDS =====")
 
     commands = read_commands(command_file)
 
-    display_commands(commands)
-
-    # =============================================
-    # PARSE COMMANDS
-    # =============================================
+    if not commands:
+        print("\nNo commands found. Please check:")
+        print(command_file)
+        return
 
     parsed_commands = parse_all_commands(commands)
 
-    print("\n===== PARSED COMMANDS =====")
-
-    for command in parsed_commands:
-        print(command)
-
     # =============================================
-    # CREATE DATA STORE
+    # PROCESS COMMANDS
     # =============================================
 
     store = DataStore()
-
-    # =============================================
-    # PROCESS ALL COMMANDS
-    # =============================================
 
     command_results = handle_all_commands(
         parsed_commands,
@@ -178,22 +170,19 @@ def main():
     )
 
     # =============================================
-    # DISPLAY RESULTS
+    # DISPLAY CLEAN SUMMARY
     # =============================================
 
-    print("\n===== COMMAND RESULTS =====")
-
-    for result in command_results:
-        print(result)
+    display_summary(command_results)
 
     # =============================================
-    # SAVE RESULTS TO FILE
+    # SAVE RESULTS
     # =============================================
 
     save_results(command_results, output_file)
 
-    print("\nResults saved successfully!")
-    print(f"Output file: {output_file}")
+    print("Results saved successfully!")
+    print(f"Output: {output_file}\n")
 
 
 if __name__ == "__main__":
